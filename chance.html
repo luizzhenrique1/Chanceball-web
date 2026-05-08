@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ChanceBall Mobile (Paisagem) V11 - Botões de Movimento Máximos e Espaçamento Aumentado</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        /* --- ESTILOS GERAIS E LAYOUT (Modo Paisagem) --- */
+        body {
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #2c3e50;
+            font-family: Arial, sans-serif;
+            flex-direction: row; 
+            overflow: hidden; 
+            /* AUMENTADO: Padding lateral grande para afastar os controles do game display */
+            padding: 15px; 
+        }
+
+        #main-game-area {
+            display: flex;
+            flex-direction: row;
+            align-items: center; 
+            height: 100%;
+        }
+
+        /* Canvas */
+        #gameCanvas {
+            border: 5px solid #ecf0f1;
+            background-color: #3498db;
+            height: 98vh; 
+            width: auto; 
+            max-width: 800px;
+            max-height: 600px;
+            display: block;
+        }
+
+        /* --- CONTROLES DE TOQUE (TOUCHPADS) --- */
+        .controls-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            height: 100%;
+            /* AJUSTADO: Aumentando a largura para que os botões Left/Right fiquem ainda mais largos (Era 25%) */
+            width: 30%; 
+            padding: 0 5px;
+        }
+        
+        .player-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* AUMENTADO: Mais espaço entre os controles P1 e P2 */
+            margin: 20px 0; 
+            /* AUMENTADO: Padding interno */
+            padding: 20px 5px; 
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.1); 
+            position: relative; 
+        }
+        
+        .info-p {
+            color: #ecf0f1;
+            font-size: 10px;
+            margin-bottom: 15px; 
+            text-align: center;
+        }
+        
+        /* Botões de Movimento AUMENTADOS (parte inferior) */
+        .movement-pad {
+            display: flex;
+            flex-direction: row; 
+            justify-content: space-between; 
+            width: 100%; 
+            /* AUMENTADO: Mais espaço do botão de pular */
+            margin-top: 30px; 
+        }
+
+        .control-btn {
+            color: white;
+            border: none;
+            border-radius: 8px;
+            /* AUMENTADO: De 20px para 25px para maior área de toque vertical */
+            padding: 25px 10px; 
+            margin: 0 5px; 
+            font-size: 16px; 
+            font-weight: bold;
+            touch-action: manipulation;
+            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3); 
+            transition: background-color 0.1s;
+            text-align: center;
+        }
+        
+        /* Botões de Movimento (Largos e iguais) */
+        .move-btn {
+            background-color: #34495e; 
+            box-shadow: 0 3px 0 #2c3e50;
+            /* MANTIDO: 48% é o máximo para ter uma pequena margem entre eles. A largura final aumentou por conta do .controls-container */
+            width: 48%; 
+        }
+
+        /* --- Estilos do Botão de Pular (Centralizado em cima) --- */
+        .jump-btn {
+            position: relative; 
+            width: 70px; 
+            height: 70px; 
+            border-radius: 50%; 
+            font-size: 16px; 
+            font-weight: bold;
+            z-index: 5; 
+            padding: 0;
+            line-height: 70px; 
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5); 
+            
+            top: 0; 
+            margin-bottom: 10px; 
+        }
+        
+        /* P1 (Vermelho) */
+        #p1-jump { 
+            background-color: #e74c3c; 
+            box-shadow: 0 4px 0 #c0392b; 
+        }
+        
+        /* P2 (Verde) */
+        #p2-jump { 
+            background-color: #2ecc71; 
+            box-shadow: 0 4px 0 #27ae60; 
+        }
+        
+        .control-btn:active {
+            box-shadow: none;
+            transform: translateY(3px);
+        }
+        
+        /* Estilo para a mensagem de Game Over */
+        #gameOverMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
+            display: none; 
+            font-size: 18px;
+        }
+        
+        #gameOverMessage h2 {
+            margin-top: 0;
+            font-size: 24px;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="main-game-area">
+        <div class="controls-container" id="p1-controls">
+            <div class="player-controls">
+                <p class="info-p">P1 (Vermelho)</p>
+                
+                <button id="p1-jump" class="jump-btn" ontouchstart="handleTouch(event, 'p1-jump', true)" ontouchend="handleTouch(event, 'p1-jump', false)">PULAR</button>
+                
+                <div class="movement-pad">
+                    <button id="p1-left" class="control-btn move-btn" ontouchstart="handleTouch(event, 'p1-left', true)" ontouchend="handleTouch(event, 'p1-left', false)">&#9664;</button>
+                    <button id="p1-right" class="control-btn move-btn" ontouchstart="handleTouch(event, 'p1-right', true)" ontouchend="handleTouch(event, 'p1-right', false)">&#9654;</button>
+                </div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="gameOverMessage">
+            <h2 id="gameOverText"></h2>
+            <p>Toque na tela para Recomeçar</p>
+        </div>
+
+        <div class="controls-container" id="p2-controls">
+            <div class="player-controls">
+                <p class="info-p">P2 (Verde)</p>
+                
+                <button id="p2-jump" class="jump-btn" ontouchstart="handleTouch(event, 'p2-jump', true)" ontouchend="handleTouch(event, 'p2-jump', false)">PULAR</button>
+                
+                <div class="movement-pad">
+                    <button id="p2-left" class="control-btn move-btn" ontouchstart="handleTouch(event, 'p2-left', true)" ontouchend="handleTouch(event, 'p2-left', false)">&#9664;</button>
+                    <button id="p2-right" class="control-btn move-btn" ontouchstart="handleTouch(event, 'p2-right', true)" ontouchend="handleTouch(event, 'p2-right', false)">&#9654;</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // --- Variáveis Globais e Configurações ---
+        const CANVAS_WIDTH = 800; 
+        const CANVAS_HEIGHT = 600; 
+        
+        // Gravidade (Mantida)
+        const GRAVITY = 0.2; 
+        
+        const NET_WIDTH = 10;
+        const NET_HEIGHT = 200;
+        const GAME_OVER_SCORE = 10;
+        
+        // --- Variáveis de Velocidade da Bola MAIS LENTAS (Mantidas) ---
+        const INITIAL_SERVE_IMPULSE = 1.5; 
+        const INITIAL_SERVE_LIFT = -3;     
+        const PLAYER_HIT_IMPULSE = 12;     
+        const BALL_RADIUS = 30;            
+
+        const P1_COLOR = '#e74c3c'; 
+        const P2_COLOR = '#2ecc71'; 
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverMessage = document.getElementById('gameOverMessage');
+        const gameOverText = document.getElementById('gameOverText');
+
+        let score = { p1: 0, p2: 0 };
+        let gameActive = true;
+        let lastScorer = 1;
+        let lastServeTime = 0; 
+
+        // Estrutura para os jogadores
+        let players = [
+            { // Player 1 (Esquerda)
+                x: 100, y: CANVAS_HEIGHT - 60, 
+                w: 60, h: 60, 
+                vx: 0, vy: 0,
+                color: P1_COLOR, 
+                onGround: true,
+                moveLeft: false, moveRight: false, jump: false, 
+                facingRight: true,
+                touches: 0
+            },
+            { // Player 2 (Direita)
+                x: CANVAS_WIDTH - 160, y: CANVAS_HEIGHT - 60, 
+                w: 60, h: 60, 
+                vx: 0, vy: 0,
+                color: P2_COLOR, 
+                onGround: true,
+                moveLeft: false, moveRight: false, jump: false, 
+                facingRight: false,
+                touches: 0
+            }
+        ];
+
+        // Estrutura para a bola
+        let ball = {
+            x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, r: BALL_RADIUS,
+            vx: 0, vy: 0,
+            color: '#f1c40f',
+            inPlay: false, 
+            lastTouched: 0,
+            scored: false, 
+        };
+
+        // --- FUNÇÕES DE CONTROLE DE TOQUE ---
+        const controlMap = {
+            'p1-left': { player: 0, action: 'moveLeft' },
+            'p1-right': { player: 0, action: 'moveRight' },
+            'p1-jump': { player: 0, action: 'jump' },
+            'p2-left': { player: 1, action: 'moveLeft' },
+            'p2-right': { player: 1, action: 'moveRight' },
+            'p2-jump': { player: 1, action: 'jump' },
+        };
+
+        function handleTouch(event, id, isStart) {
+            event.preventDefault(); 
+            const control = controlMap[id];
+            if (!control) return;
+
+            const p = players[control.player];
+            const action = control.action;
+
+            if (action === 'jump') {
+                if (isStart) p.jump = true;
+            } else {
+                p[action] = isStart;
+            }
+        }
+        
+        gameOverMessage.addEventListener('touchstart', (event) => {
+            if (!gameActive) {
+                event.preventDefault();
+                initGame();
+                gameOverMessage.style.display = 'none';
+            }
+        });
+
+
+        // --- Funções de Inicialização e Reset ---
+
+        function resetBallForServe(server) {
+            ball.inPlay = false;
+            ball.vx = 0;
+            ball.vy = 0;
+            ball.scored = false; 
+            ball.lastTouched = 0;
+            
+            if (server === 1) {
+                ball.x = CANVAS_WIDTH / 4;
+            } else {
+                ball.x = CANVAS_WIDTH * 3 / 4;
+            }
+            ball.y = CANVAS_HEIGHT / 2 - 50;
+            
+            players[0].touches = 0;
+            players[1].touches = 0;
+            lastServeTime = performance.now(); 
+
+            setTimeout(() => {
+                if (gameActive) {
+                    ball.inPlay = true;
+                    if (server === 1) {
+                        ball.vx = INITIAL_SERVE_IMPULSE;
+                    } else {
+                        ball.vx = -INITIAL_SERVE_IMPULSE;
+                    }
+                    ball.vy = INITIAL_SERVE_LIFT;
+                }
+            }, 4000); 
+        }
+
+        function initGame() {
+            score.p1 = 0;
+            score.p2 = 0;
+            lastScorer = 1;
+            gameActive = true;
+            gameOverMessage.style.display = 'none'; 
+            resetBallForServe(lastScorer);
+            gameLoop();
+        }
+
+        // --- Funções de Física e Atualização ---
+
+        function updatePhysics() {
+            players.forEach(p => {
+                // Gravidade do jogador
+                if (!p.onGround) p.vy += GRAVITY * 3; 
+
+                if (p.moveLeft) {
+                    p.vx = -5;
+                    p.facingRight = false;
+                } else if (p.moveRight) {
+                    p.vx = 5;
+                    p.facingRight = true;
+                } else {
+                    p.vx = 0;
+                }
+
+                if (p.jump && p.onGround) {
+                    // Pulo alto
+                    p.vy = -16; 
+                    p.onGround = false;
+                    p.jump = false; 
+                }
+
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Colisão com o chão
+                if (p.y + p.h > CANVAS_HEIGHT) {
+                    p.y = CANVAS_HEIGHT - p.h;
+                    p.vy = 0;
+                    p.onGround = true;
+                }
+
+                // Limites
+                if (p.x < 0) p.x = 0;
+                if (p.x + p.w > CANVAS_WIDTH) p.x = CANVAS_WIDTH - p.w;
+
+                // Limite da Rede
+                if (p === players[0] && p.x + p.w > CANVAS_WIDTH / 2 - NET_WIDTH / 2) {
+                    p.x = CANVAS_WIDTH / 2 - NET_WIDTH / 2 - p.w;
+                }
+                if (p === players[1] && p.x < CANVAS_WIDTH / 2 + NET_WIDTH / 2) {
+                    p.x = CANVAS_WIDTH / 2 + NET_WIDTH / 2;
+                }
+            });
+
+            // --- Atualização da Bola ---
+            if (ball.inPlay) {
+                ball.vy += GRAVITY; 
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+                
+                // Colisão com o topo
+                if (ball.y - ball.r < 0) {
+                    ball.y = ball.r;
+                    ball.vy *= -0.8;
+                }
+
+                // Colisão com o chão (PONTO)
+                if (ball.y + ball.r > CANVAS_HEIGHT) {
+                    ball.y = CANVAS_HEIGHT - ball.r;
+                    
+                    if (!ball.scored) {
+                        const side = ball.x < CANVAS_WIDTH / 2 ? 1 : 2;
+                        // Ponto para o adversário
+                        pointScored(side === 1 ? 2 : 1); 
+                        ball.scored = true; 
+                    }
+
+                    // A bola quica no chão
+                    ball.vy *= -0.3; 
+                    ball.vx *= 0.95; 
+                    
+                    if (Math.abs(ball.vy) < 1) {
+                         ball.vy = 0;
+                         ball.vx = 0;
+                    }
+                }
+
+                // Colisão com as laterais
+                if (ball.x - ball.r < 0 || ball.x + ball.r > CANVAS_WIDTH) {
+                    ball.vx *= -1;
+                    if (ball.x - ball.r < 0) ball.x = ball.r;
+                    if (ball.x + ball.r > CANVAS_WIDTH) ball.x = CANVAS_WIDTH - ball.r;
+                }
+            }
+        }
+
+        function checkCollisions() {
+            const netX = CANVAS_WIDTH / 2 - NET_WIDTH / 2;
+
+            // Colisão Rede
+            if (ball.x + ball.r > netX && ball.x - ball.r < netX + NET_WIDTH) {
+                // Colisão Topo da Rede
+                if (ball.y + ball.r > CANVAS_HEIGHT - NET_HEIGHT && ball.y < CANVAS_HEIGHT - NET_HEIGHT + 5) {
+                    ball.vy *= -0.6;
+                    ball.vx *= 0.8;
+                }
+                // Colisão Lateral da Rede
+                if (ball.y + ball.r > CANVAS_HEIGHT - NET_HEIGHT) {
+                    if (ball.x < netX && ball.x + ball.r > netX) {
+                        ball.x = netX - ball.r;
+                        ball.vx *= -0.8;
+                    }
+                    else if (ball.x > netX + NET_WIDTH && ball.x - ball.r < netX + NET_WIDTH) {
+                        ball.x = netX + NET_WIDTH + ball.r;
+                        ball.vx *= -0.8;
+                    }
+                }
+            }
+
+            // Colisão Jogadores
+            players.forEach((p, index) => {
+                const closestX = Math.max(p.x, Math.min(ball.x, p.x + p.w));
+                const closestY = Math.max(p.y, Math.min(ball.y, p.y + p.h));
+                const dx = ball.x - closestX;
+                const dy = ball.y - closestY;
+                const distanceSq = dx * dx + dy * dy;
+
+                if (distanceSq < ball.r * ball.r) {
+                    const playerIndex = index + 1;
+
+                    // Toque Triplo
+                    if (ball.lastTouched === playerIndex) {
+                        p.touches++;
+                        if (p.touches > 3) {
+                            pointScored(playerIndex === 1 ? 2 : 1, true); 
+                            return;
+                        }
+                    } else {
+                        players[(playerIndex) % 2].touches = 0;
+                        p.touches = 1;
+                        ball.lastTouched = playerIndex;
+                    }
+
+                    // Colisão e Repulsão
+                    let collisionNormalX = dx;
+                    let collisionNormalY = dy;
+                    const magnitude = Math.sqrt(distanceSq);
+
+                    if (magnitude !== 0) {
+                        collisionNormalX /= magnitude;
+                        collisionNormalY /= magnitude;
+                    } else {
+                        collisionNormalX = p.facingRight ? -1 : 1;
+                        collisionNormalY = -1;
+                    }
+
+                    const penetrationDepth = ball.r - magnitude;
+                    ball.x += collisionNormalX * penetrationDepth;
+                    ball.y += collisionNormalY * penetrationDepth;
+
+                    let impulseMagnitude = PLAYER_HIT_IMPULSE; 
+                    let horizontalForce = 0;
+
+                    // Aplica Impulso
+                    ball.vx = (collisionNormalX * (impulseMagnitude * 0.5)) + horizontalForce;
+                    ball.vy = collisionNormalY * impulseMagnitude;
+                }
+            });
+        }
+
+        // --- Funções de Regras e Pontuação ---
+
+        function pointScored(winningPlayer, error = false) {
+            if (!gameActive) return;
+
+            if (winningPlayer === 1) {
+                score.p1++;
+            } else {
+                score.p2++;
+            }
+
+            lastScorer = winningPlayer;
+
+            if (score.p1 >= GAME_OVER_SCORE || score.p2 >= GAME_OVER_SCORE) {
+                gameActive = false;
+                const winner = score.p1 > score.p2 ? 1 : 2;
+                gameOverText.textContent = `Fim de Jogo! P${winner} Venceu!`;
+                gameOverMessage.style.display = 'block';
+                return; 
+            }
+
+            if (gameActive) {
+                resetBallForServe(lastScorer);
+            }
+        }
+
+        // --- Funções de Renderização ---
+        
+        function resizeCanvas() {
+            const containerHeight = canvas.parentElement.clientHeight;
+            // Garante que o canvas mantenha a proporção 800/600 (4:3)
+            canvas.style.height = (containerHeight - 10) + 'px';
+            canvas.style.width = (canvas.clientHeight * (CANVAS_WIDTH / CANVAS_HEIGHT)) + 'px';
+        }
+
+        function drawPlayer(p) {
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, p.w, p.h);
+        }
+        
+        function drawGame() {
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Linha do Chão
+            ctx.fillStyle = '#2980b9'; 
+            ctx.fillRect(0, CANVAS_HEIGHT - 5, CANVAS_WIDTH, 5);
+
+            // Rede
+            ctx.fillStyle = '#ecf0f1';
+            ctx.fillRect(CANVAS_WIDTH / 2 - NET_WIDTH / 2, CANVAS_HEIGHT - NET_HEIGHT, NET_WIDTH, NET_HEIGHT);
+
+            // Placar
+            ctx.fillStyle = '#ecf0f1';
+            ctx.font = '30px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${score.p1} - ${score.p2}`, CANVAS_WIDTH / 2, 40);
+
+            // Desenha os Jogadores
+            players.forEach(drawPlayer);
+
+            // Desenha a bola
+            if (ball.inPlay) {
+                 ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+                ctx.fillStyle = ball.color;
+                ctx.fill();
+                ctx.closePath();
+            } else if (gameActive) {
+                // Exibe mensagem de Saque com Timer
+                ctx.fillStyle = '#f39c12';
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                
+                const timeLeft = Math.ceil(4 - (performance.now() - lastServeTime) / 1000);
+
+                if (timeLeft > 0) {
+                     ctx.fillText(`Saque P${lastScorer} em ${timeLeft}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+                }
+                
+                // Desenha a bola na posição de saque (estática)
+                 ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+                ctx.fillStyle = ball.color;
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        // --- Loop Principal do Jogo ---
+
+        function gameLoop() {
+            if (!gameActive) return;
+
+            updatePhysics();
+            checkCollisions();
+            drawGame();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Inicia o jogo ao carregar
+        window.addEventListener('load', () => {
+             // Redimensiona o canvas para caber na tela
+            resizeCanvas(); 
+            window.addEventListener('resize', resizeCanvas);
+            initGame();
+        });
+        
+    </script>
+</body>
+</html>
